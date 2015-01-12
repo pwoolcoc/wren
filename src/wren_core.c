@@ -1,3 +1,4 @@
+#define _XOPEN_SOURCE 700
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -985,6 +986,53 @@ DEF_NATIVE(string_toString)
   RETURN_VAL(args[0]);
 }
 
+DEF_NATIVE(string_strip)
+{
+  ObjString* string = AS_STRING(args[0]);
+  const char* toStrip;
+  if ((args[1]).bits == 0) {
+    toStrip = " \n\t";
+  } else {
+    toStrip = AS_CSTRING(args[1]);
+  }
+  unsigned int MAX_ARG_LEN = 1024;
+  unsigned int toStripLen = strnlen(toStrip, MAX_ARG_LEN);
+
+  unsigned int start = 0;
+  unsigned int end = strnlen(string->value, MAX_ARG_LEN) - 1;
+
+  // strip `toStrip` off the beginning of the string
+  while (1) {
+      for (unsigned int i = 0; i < toStripLen; i++) {
+        if (memcmp(&string->value[start], &toStrip[i], 1) == 0) {
+          start++;
+          break;
+        }
+      }
+      break;
+  }
+
+  // strip `toString` off the end of the string
+  while (1) {
+    for (unsigned int i = 0; i < toStripLen; i++) {
+      if (memcmp(&string->value[end], &toStrip[i], 1) == 0) {
+        end--;
+        break;
+      }
+    }
+    break;
+  }
+
+  unsigned int newLen = end - start + 1;
+  Value val = wrenNewUninitializedString(vm, newLen);
+  ObjString* newString = AS_STRING(val);
+  for (unsigned int i = 0; i < newLen; i++) {
+    newString->value[i] = string->value[start + i];
+  }
+  newString->value[newLen] = '\0';
+  RETURN_VAL(val);
+}
+
 DEF_NATIVE(string_plus)
 {
   if (!validateString(vm, args, 1, "Right operand")) return PRIM_ERROR;
@@ -1184,6 +1232,8 @@ void wrenInitializeCore(WrenVM* vm)
   NATIVE(vm->stringClass, "indexOf ", string_indexOf);
   NATIVE(vm->stringClass, "startsWith ", string_startsWith);
   NATIVE(vm->stringClass, "toString", string_toString);
+  NATIVE(vm->stringClass, "strip ", string_strip);
+  NATIVE(vm->stringClass, "strip", string_strip);
   NATIVE(vm->stringClass, "+ ", string_plus);
   NATIVE(vm->stringClass, "== ", string_eqeq);
   NATIVE(vm->stringClass, "!= ", string_bangeq);
